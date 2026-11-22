@@ -25,7 +25,7 @@ def alugar_filme():
         print("[ERRO] Cliente não encontrado.")
         return
 
-    # Regra de negócio: máximo de 3 filmes alugados simultaneamente por cliente
+    
     ativas_cliente = [l for l in locacoes if l["cliente_id"] == id_cliente and l["ativa"]]
     if len(ativas_cliente) >= 3:
         print("[ERRO] Limite atingido! Este cliente já possui 3 filmes alugados simultaneamente.")
@@ -43,7 +43,7 @@ def alugar_filme():
         print("[ERRO] Filme inexistente ou sem cópias disponíveis em estoque.")
         return
 
-    # Regra de negócio: verificação de classificação indicativa
+    
     if cliente["idade"] < filme["classificacao"]:
         print(f"[BLOQUEADO] O cliente tem {cliente['idade']} anos e o filme '{filme['titulo']}' tem classificação +{filme['classificacao']} anos.")
         return
@@ -58,11 +58,11 @@ def alugar_filme():
         return
 
     subtotal = dias * filme["valor_diaria"]
-    # Regra de negócio: 15% de desconto se o cliente já tiver outros filmes ativos (combo)
+    
     desconto = subtotal * 0.15 if len(ativas_cliente) >= 1 else 0.0
     total = subtotal - desconto
 
-    # Atualiza estoque em memória
+    
     filme["copias_disponiveis"] -= 1
 
     nova_locacao = {
@@ -112,7 +112,7 @@ def devolver_filme():
     except ValueError:
         dias_atraso = 0
 
-    # Regra de negócio: multa de R$ 5,00 + 1 diária por dia de atraso
+    
     multa = 0.0
     if dias_atraso > 0 and filme:
         multa = dias_atraso * (filme["valor_diaria"] + 5.00)
@@ -125,27 +125,89 @@ def devolver_filme():
 
     print(f"[SUCESSO] Filme devolvido ao estoque! Valor final acertado: R$ {locacao['valor_total']:.2f}")
 
-def exibir_relatorios():
-    print("\n=== RELATÓRIOS GERENCIAIS ===")
-    total_titulos = len(filmes)
+
+
+def relatorio_resumo():
+    print("\n--- RESUMO GERAL ---")
     copias_estoque = sum(f["copias_disponiveis"] for f in filmes)
     locacoes_ativas = sum(1 for l in locacoes if l["ativa"])
     faturamento = sum(l["valor_total"] for l in locacoes)
 
     print(f"Clientes Cadastrados          : {len(clientes)}")
-    print(f"Títulos no Catálogo           : {total_titulos}")
+    print(f"Títulos no Catálogo           : {len(filmes)}")
     print(f"Cópias Disponíveis na Loja    : {copias_estoque}")
     print(f"Filmes Atualmente Alugados    : {locacoes_ativas}")
     print(f"Total de Locações Realizadas  : {len(locacoes)}")
     print(f"Faturamento Total Acumulado   : R$ {faturamento:.2f}")
 
-    print("\n--- Histórico de Locações ---")
+def relatorio_clientes():
+    print("\n--- RELATÓRIO DE CLIENTES ---")
+    if not clientes:
+        print("Nenhum cliente cadastrado.")
+        return
+    for c in clientes:
+        suas = [l for l in locacoes if l["cliente_id"] == c["id"]]
+        ativas = sum(1 for l in suas if l["ativa"])
+        gasto = sum(l["valor_total"] for l in suas)
+        print(f"ID: {c['id']} | {c['nome']} | {c['idade']} anos | "
+              f"Locações: {len(suas)} | Em aberto: {ativas} | Total gasto: R$ {gasto:.2f}")
+
+def relatorio_catalogo():
+    print("\n--- RELATÓRIO DO CATÁLOGO (DISPONÍVEIS x ALUGADAS) ---")
+    if not filmes:
+        print("Nenhum filme cadastrado.")
+        return
+    for f in filmes:
+        alugadas = sum(1 for l in locacoes if l["filme_id"] == f["id"] and l["ativa"])
+        vezes = sum(1 for l in locacoes if l["filme_id"] == f["id"])
+        print(f"ID: {f['id']} | {f['titulo']} | Disponíveis: {f['copias_disponiveis']} | "
+              f"Alugadas agora: {alugadas} | Vezes alugado: {vezes}")
+
+def relatorio_historico():
+    print("\n--- HISTÓRICO DE LOCAÇÕES ---")
     if not locacoes:
         print("Nenhuma locação registrada ainda.")
-    else:
-        for l in locacoes:
-            status = "ALUGADO" if l["ativa"] else "DEVOLVIDO"
-            print(f"#{l['id']} | {l['cliente_nome']} -> '{l['filme_titulo']}' | R$ {l['valor_total']:.2f} | [{status}]")
+        return
+    for l in locacoes:
+        status = "ALUGADO" if l["ativa"] else "DEVOLVIDO"
+        print(f"#{l['id']} | {l['cliente_nome']} -> '{l['filme_titulo']}' | "
+              f"{l['dias']} dia(s) | R$ {l['valor_total']:.2f} | [{status}]")
+
+def relatorio_faturamento():
+    print("\n--- FATURAMENTO ---")
+    recebido = sum(l["valor_total"] for l in locacoes if not l["ativa"])
+    a_receber = sum(l["valor_total"] for l in locacoes if l["ativa"])
+    print(f"Já recebido (devolvidos)      : R$ {recebido:.2f}")
+    print(f"Em aberto (ainda alugados)    : R$ {a_receber:.2f}")
+    print(f"Faturamento total             : R$ {recebido + a_receber:.2f}")
+
+def exibir_relatorios():
+    while True:
+        print("\n=== RELATÓRIOS GERENCIAIS ===")
+        print("1 - Resumo Geral")
+        print("2 - Clientes")
+        print("3 - Catálogo (disponíveis x alugadas)")
+        print("4 - Histórico de Locações")
+        print("5 - Faturamento")
+        print("0 - Voltar ao Menu Principal")
+        opcao = input("Escolha uma opção: ").strip()
+
+        if opcao == "1":
+            relatorio_resumo()
+        elif opcao == "2":
+            relatorio_clientes()
+        elif opcao == "3":
+            relatorio_catalogo()
+        elif opcao == "4":
+            relatorio_historico()
+        elif opcao == "5":
+            relatorio_faturamento()
+        elif opcao == "0":
+            break
+        else:
+            print("[ERRO] Opção inválida!")
+
+
 
 def menu_locacoes():
     while True:
